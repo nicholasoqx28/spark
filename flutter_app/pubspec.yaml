@@ -1,0 +1,44 @@
+name: spark
+description: Spark — Sports Platform (Flutter)
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^14.3.0
+
+  # HTTP
+  dio: ^5.7.0
+
+  # Secure storage (tokens)
+  flutter_secure_storage: ^9.2.2
+
+  # UI helpers
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+
+  # Utils
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.12
+  riverpod_generator: ^2.4.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
