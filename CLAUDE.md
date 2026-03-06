@@ -17,70 +17,145 @@ This file provides context and conventions for AI assistants (Claude Code and ot
 
 | Role | Description |
 |---|---|
-| Enthusiast | Casual users browsing events and shopping |
-| Athlete | Active participants joining tournaments and tracking training |
-| Admin | Manages tournaments, products, users, and academy content |
+| ENTHUSIAST | Casual users browsing events and shopping |
+| ATHLETE | Active participants joining tournaments and tracking training |
+| ADMIN | Manages tournaments, products, users, and academy content |
 
 ---
 
-## Repository State
+## Technology Stack
 
-> **Status: Early-stage / Pre-implementation**
->
-> As of March 2026, the repository contains only a README. The technology stack, architecture, and source code have not yet been established. When implementing, choose technologies appropriate to the goals described above and document decisions here.
+| Layer | Choice | Notes |
+|---|---|---|
+| Framework | **Next.js 16** (App Router) | Full-stack — UI + API routes |
+| Language | **TypeScript** | Strict mode |
+| Styling | **Tailwind CSS v4** | Utility-first |
+| ORM | **Prisma 7** | Generated client at `app/generated/prisma/client` |
+| Database | **SQLite** via **better-sqlite3** | Local dev; upgrade to Postgres for production |
+| Auth | **NextAuth.js v5** (beta) | JWT sessions; credentials provider |
+| Password hashing | **bcryptjs** | cost factor 12 |
 
 ---
 
 ## Development Setup
-
-_Update this section once a stack is chosen. Placeholder instructions:_
 
 ```bash
 # Clone the repository
 git clone <repo-url>
 cd spark
 
-# Install dependencies (update command for your package manager)
-# e.g., npm install / yarn / pnpm install / pip install -r requirements.txt
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env
+# Edit .env — set NEXTAUTH_SECRET to a random string
+
+# Apply database migrations
+npx prisma migrate dev
+
+# Generate Prisma client
+npx prisma generate
+
+# Seed the database with sample data
+npm run db:seed
+# Creates: admin@spark.app / admin1234 and athlete@spark.app / athlete1234
 
 # Run development server
-# e.g., npm run dev
-
-# Run tests
-# e.g., npm test
+npm run dev
+# → http://localhost:3000
 ```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Example |
+|---|---|---|
+| `DATABASE_URL` | SQLite URL (unused at runtime; used by Prisma CLI) | `file:./prisma/dev.db` |
+| `DB_PATH` | Absolute path to the SQLite file (optional override) | `/path/to/dev.db` |
+| `NEXTAUTH_SECRET` | JWT signing secret — **change in production** | random 32-char string |
+| `NEXTAUTH_URL` | Canonical URL of the app | `http://localhost:3000` |
+
+> **Note:** Prisma 7 with better-sqlite3 resolves the DB path from `process.cwd()/prisma/dev.db` at runtime (not from `DATABASE_URL`). `DATABASE_URL` is only used by `prisma migrate` and `prisma studio` via `prisma.config.ts`.
 
 ---
 
 ## Architecture Decisions
 
-_Document significant architecture and technology choices here as they are made._
-
 | Decision | Choice | Rationale |
 |---|---|---|
-| Stack | TBD | — |
-| Database | TBD | — |
-| Auth | TBD | — |
-| Deployment | TBD | — |
+| Stack | Next.js App Router (full-stack) | Single repo for web + API; RSC for fast data fetching |
+| Database | SQLite + better-sqlite3 | Zero-config for local dev; swap to Postgres for production |
+| Prisma adapter | `@prisma/adapter-better-sqlite3` | Prisma 7 requires driver adapters instead of embedded engine |
+| Auth | NextAuth v5 credentials | Simple username/password; can add OAuth providers later |
+| Prisma client location | `app/generated/prisma/client` | Prisma 7 generated output — always import from this path |
 
 ---
 
 ## Directory Structure
 
-_Update this section as the codebase grows. Expected structure once implementation begins:_
-
 ```
 spark/
-├── CLAUDE.md          # This file — AI assistant guide
-├── README.md          # Project overview for humans
-├── src/               # Application source code
-│   ├── features/      # Feature modules (tournaments, ecommerce, academy, etc.)
-│   ├── shared/        # Shared utilities, components, types
-│   └── ...
-├── tests/             # Test files mirroring src/ structure
-├── docs/              # Architecture diagrams, API docs, ADRs
-└── ...                # Config files (CI, linting, formatting, etc.)
+├── CLAUDE.md                    # This file — AI assistant guide
+├── README.md                    # Project overview
+├── prisma/
+│   ├── schema.prisma            # Database schema
+│   ├── seed.ts                  # Sample data seeder
+│   ├── migrations/              # Prisma migration history
+│   └── dev.db                   # SQLite database (gitignored)
+├── app/                         # Next.js App Router
+│   ├── layout.tsx               # Root layout (Navbar, SessionProvider)
+│   ├── page.tsx                 # Landing page
+│   ├── globals.css              # Global styles
+│   ├── generated/prisma/        # Prisma-generated client (do not edit)
+│   ├── (auth pages)/
+│   │   ├── login/page.tsx
+│   │   └── register/page.tsx
+│   ├── dashboard/page.tsx
+│   ├── tournaments/page.tsx
+│   ├── shop/page.tsx
+│   ├── academy/page.tsx
+│   └── api/
+│       ├── auth/[...nextauth]/  # NextAuth handler
+│       ├── auth/register/       # User registration
+│       ├── tournaments/         # CRUD + registration
+│       ├── products/            # Product catalog
+│       ├── orders/              # Order management
+│       ├── courses/             # Academy courses
+│       └── enrollments/         # Course enrollment
+├── features/                    # Domain feature modules
+│   ├── users/
+│   ├── tournaments/
+│   ├── ecommerce/
+│   └── academy/
+├── lib/
+│   ├── prisma.ts                # Prisma client singleton
+│   └── auth.ts                  # NextAuth configuration
+├── types/
+│   └── next-auth.d.ts           # Session type augmentation
+└── prisma.config.ts             # Prisma 7 CLI configuration
 ```
+
+---
+
+## Feature Module Conventions
+
+Each domain module lives under `features/<module-name>/` and follows this structure:
+
+```
+features/<module-name>/
+├── index.ts           # Public API — re-exports from services and components
+├── components/        # React UI components
+├── services/          # Business logic calling Prisma directly
+└── types.ts           # TypeScript types / interfaces (if needed)
+```
+
+**Modules:**
+- `users` — auth, session, profile
+- `tournaments` — event lifecycle, registration
+- `ecommerce` — products, orders, cart
+- `academy` — courses, lessons, enrollment
 
 ---
 
@@ -90,19 +165,25 @@ spark/
 
 - Write clear, self-documenting code; add comments only where logic is non-obvious
 - Prefer small, focused functions and modules over large monolithic ones
-- Keep feature code co-located within feature directories
 - No commented-out dead code — delete unused code instead
+
+### Imports
+
+- Always import Prisma types from `@/app/generated/prisma/client` (not from `@/app/generated/prisma`)
+- Use `@/` alias for all internal imports (configured in `tsconfig.json`)
 
 ### Naming
 
 - Use descriptive names; avoid abbreviations unless universally understood (`id`, `url`, etc.)
-- File names: match the primary export (e.g., `UserProfile.tsx` exports `UserProfile`)
+- React components: PascalCase (`TournamentCard.tsx`)
+- Services / utilities: camelCase (`tournamentService.ts`)
 
 ### Git
 
 - Branch naming: `feature/<short-description>`, `fix/<short-description>`, `chore/<short-description>`
 - Commit messages: imperative mood, ≤72 chars subject, e.g., `Add tournament bracket view`
 - One logical change per commit; keep PRs focused and reviewable
+- Work on `claude/claude-md-mmf2z3ddi1vuzcnq-KuKjg` unless told otherwise
 
 ### Testing
 
@@ -112,35 +193,23 @@ spark/
 
 ---
 
-## Feature Module Conventions
-
-Each major domain area should be a self-contained module with the following structure:
-
-```
-features/<module-name>/
-├── index.ts           # Public API / exports
-├── components/        # UI components (if applicable)
-├── services/          # Business logic, API calls
-├── types.ts           # TypeScript types / interfaces
-└── tests/             # Module-specific tests
-```
-
-**Domain modules to implement:**
-- `tournaments` — event lifecycle, brackets, registration
-- `ecommerce` — product catalog, cart, checkout, orders
-- `academy` — courses, training plans, content management
-- `activities` — scheduling, participation, tracking
-- `users` — authentication, roles (enthusiast / athlete / admin), profiles
-
----
-
 ## Role-Based Access Control
 
-All features must respect the three user roles. When adding any new capability:
+| Route / Action | ENTHUSIAST | ATHLETE | ADMIN |
+|---|---|---|---|
+| Browse tournaments | ✅ | ✅ | ✅ |
+| Register for tournament | ❌ | ✅ | ✅ |
+| Create tournament | ❌ | ❌ | ✅ |
+| Browse products | ✅ | ✅ | ✅ |
+| Place order | ✅ | ✅ | ✅ |
+| Add/edit products | ❌ | ❌ | ✅ |
+| Enroll in course | ✅ | ✅ | ✅ |
+| Create course | ❌ | ❌ | ✅ |
 
-1. Define which roles can access it
-2. Enforce access at the API/service layer (not just the UI)
-3. Document role requirements in the feature module's `README` or inline comments
+**Rules:**
+1. Enforce roles at the **API route layer** (not just the UI)
+2. Use `const session = await auth()` in server components / route handlers
+3. Return `403` for unauthorized actions
 
 ---
 
@@ -155,20 +224,29 @@ When working on this codebase:
 5. **Respect roles** — Any user-facing feature must account for all three roles
 6. **Commit on the correct branch** — Work on `claude/claude-md-mmf2z3ddi1vuzcnq-KuKjg` unless told otherwise
 7. **Tests required** — Do not mark implementation tasks complete without corresponding tests
+8. **Import from client** — Always use `@/app/generated/prisma/client` for Prisma types and client
 
 ---
 
 ## Useful Commands
 
-_Populate this section as the project tooling is established._
-
 ```bash
-# Lint
-# Format
-# Build
-# Test
-# Deploy (staging)
+npm run dev          # Start development server (http://localhost:3000)
+npm run build        # Production build + type check
+npm run lint         # ESLint
+npm run db:migrate   # Run Prisma migrations (npx prisma migrate dev)
+npm run db:seed      # Seed sample data
+npm run db:studio    # Open Prisma Studio GUI
 ```
+
+---
+
+## Seed Accounts
+
+| Email | Password | Role |
+|---|---|---|
+| admin@spark.app | admin1234 | ADMIN |
+| athlete@spark.app | athlete1234 | ATHLETE |
 
 ---
 
